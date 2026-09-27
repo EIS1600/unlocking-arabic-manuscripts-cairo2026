@@ -361,6 +361,11 @@ body.agent-review .word-box { cursor:pointer; }
 .agent-dialog-actions { display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.7rem; }
 #agentError { color:#b91c1c; }
 
+/* BEGIN OPENITI BOUNDARY SPACING v1 */
+body.edit-mode .text-boundary-control { display: flex; align-items: center;
+  justify-content: center; height: auto; min-height: 1.5em; margin: .35em 0; }
+body.edit-mode .text-boundary-button { transform: none; }
+/* END OPENITI BOUNDARY SPACING v1 */
 </style>
 </head>
 <body>
@@ -4216,9 +4221,9 @@ function confirmGroundTruthExport(result, {includeLayout = false, format = "docu
   }));
   const baselineNotice = dialog.querySelector(".baseline-acceptance-warning");
   baselineNotice.hidden = baselineWarnings.length === 0;
-  fillStructureValidationList(dialog.querySelector(".layout-export-errors"), layoutErrors);
-  fillStructureValidationList(dialog.querySelector(".baseline-export-warnings"), baselineWarnings);
-  fillStructureValidationList(dialog.querySelector(".other-export-warnings"), otherWarnings);
+  fillValidationList(dialog.querySelector(".layout-export-errors"), layoutErrors);
+  fillValidationList(dialog.querySelector(".baseline-export-warnings"), baselineWarnings);
+  fillValidationList(dialog.querySelector(".other-export-warnings"), otherWarnings);
   dialog.querySelector(".export-warning-question").textContent =
     `Export this ${format} with these warnings?`;
   dialog.querySelector(".export-warning-confirm").textContent = `Export ${format}`;
