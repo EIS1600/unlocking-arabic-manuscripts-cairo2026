@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cairo2026 · Printed books — consensus review</title>
+<style>
+
+@font-face {
+  font-family: "ReviewArabic";
+  src: local("Amiri"), local("Amiri Regular");
+  font-style: normal;
+  font-weight: 400;
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-089F, U+08A0-08FF,
+    U+FB50-FDFF, U+FE70-FEFF, U+10E60-10E7F, U+10EC0-10EFF, U+1EE00-1EEFF;
+}
+@font-face {
+  font-family: "ReviewArabic";
+  src: local("Amiri Bold"), local("Amiri");
+  font-style: normal;
+  font-weight: 700;
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-089F, U+08A0-08FF,
+    U+FB50-FDFF, U+FE70-FEFF, U+10E60-10E7F, U+10EC0-10EFF, U+1EE00-1EEFF;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; color: #111827; background: #fff; font-family: "ReviewArabic", Arial, sans-serif;
+  font-size: var(--review-font-size, 16px); }
+button { font: inherit; letter-spacing: 0; }
+.layout { --sidebar-width: 340px; height: 100%; display: grid;
+  grid-template-columns: minmax(120px, var(--sidebar-width)) 12px minmax(0, 1fr); }
+body.sidebar-collapsed .layout { grid-template-columns: 0 12px minmax(0, 1fr); }
+body.sidebar-collapsed .sidebar { display: none; }
+.sidebar { grid-column: 1; grid-row: 1; min-width: 0; overflow: auto; padding: 1rem;
+  background: #f9fafb; }
+.shell-controls { display: flex; gap: .4rem; margin: 0 0 .85rem; }
+.shell-controls button { min-width: 2.35rem; border: 1px solid #9ca3af; border-radius: 4px;
+  background: #fff; color: #111827; cursor: pointer; }
+.shell-controls button:hover { background: #eef2ff; }
+.dataset-autosave { margin: 0 0 .85rem; padding: .55rem .6rem; border: 1px solid #d1d5db;
+  border-radius: 4px; background: #fff; }
+.dataset-autosave button { width: 100%; min-height: 30px; padding: .25rem .45rem;
+  border: 1px solid #9ca3af; border-radius: 4px; background: #fff; color: #111827;
+  cursor: pointer; }
+.dataset-autosave button:hover { background: #eef2ff; border-color: #2563eb; }
+.dataset-autosave-status { display: block; margin-top: .35rem; color: #6b7280;
+  font: .78rem/1.35 Arial, sans-serif; }
+.dataset-autosave.connected .dataset-autosave-status { color: #047857; }
+.dataset-autosave.error .dataset-autosave-status { color: #b91c1c; }
+.split-handle { grid-column: 2; grid-row: 1; position: relative; width: 12px;
+  cursor: col-resize; touch-action: none;
+  background: #e5e7eb; border-left: 1px solid #d1d5db;
+  border-right: 1px solid #d1d5db; }
+.split-handle:hover, .split-handle.active { background: #bfdbfe; }
+.split-toggle { position: absolute; top: 50%; left: 50%; z-index: 2; width: 22px; height: 42px;
+  display: grid; place-items: center; padding: 0; transform: translate(-50%, -50%);
+  border: 1px solid #9ca3af; border-radius: 11px; color: #374151; background: #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, .2); cursor: pointer; font-family: Arial, sans-serif;
+  font-size: 1.15rem; line-height: 1; }
+.split-toggle:hover, .split-toggle:focus-visible { color: #1d4ed8; border-color: #2563eb;
+  background: #eff6ff; }
+body.sidebar-collapsed .split-handle { cursor: default; }
+h1 { margin: 0 0 .6rem; font-size: 1.2em; letter-spacing: 0; }
+h2 { margin: 1rem 0 .45rem; font-size: .95em; letter-spacing: 0; }
+ol { margin: 0; padding-left: 1.35rem; }
+li { margin: .3rem 0; overflow-wrap: anywhere; }
+.review-list { display: grid; gap: .3rem; }
+.review-link { display: block; margin-left: -.35rem; padding: .28rem .35rem;
+  border-radius: 4px; color: #1d4ed8; text-decoration: none; }
+.review-link.ocr-resolved { color: #047857; }
+.review-link.ocr-unresolved { color: #b91c1c; }
+.review-link:hover { background: #eef2ff; text-decoration: underline; }
+.review-link.active { color: #111827; background: #dbeafe; font-weight: 700;
+  text-decoration: none; }
+.review-link.active.ocr-resolved { color: #065f46; }
+.review-link.active.ocr-unresolved { color: #991b1b; }
+.review-link:focus-visible { outline: 2px solid #93c5fd; outline-offset: 1px; }
+.empty { color: #6b7280; font-size: .9em; }
+iframe { grid-column: 3; grid-row: 1; width: 100%; height: 100%; border: 0; }
+.placeholder { grid-column: 3; grid-row: 1; display: grid; place-items: center;
+  height: 100%; color: #6b7280; }
+@media (max-width: 900px) {
+  .layout { display: block; height: auto; }
+  .sidebar { max-height: 45vh; border-right: 0; border-bottom: 1px solid #d1d5db; }
+  .split-handle { display: none; }
+  iframe, .placeholder { height: 70vh; }
+}
+
+#status[data-error=true]{color:#b91c1c}
+button:disabled{opacity:.5;cursor:wait}
+</style></head><body>
+<main class="layout">
+  <nav class="sidebar" id="reviewSidebar">
+    <h1>Cairo2026 · Printed books — consensus review</h1>
+    <div class="shell-controls" aria-label="Review shell controls">
+      <button id="shellFontSmallerBtn" type="button">A-</button>
+      <button id="shellFontLargerBtn" type="button">A+</button>
+    </div>
+    <div class="dataset-autosave">
+      <button id="save" type="button" disabled>Save HTML</button>
+      <span id="status" class="dataset-autosave-status" role="status">Loading document…</span>
+    </div>
+    <div id="documents"></div>
+  </nav>
+  <div class="split-handle" id="splitHandle" role="separator" aria-orientation="vertical" aria-label="Resize file list" tabindex="0">
+    <button class="split-toggle" id="sidebarToggleBtn" type="button" aria-controls="reviewSidebar" aria-expanded="true" aria-label="Collapse file list" title="Collapse file list">‹</button>
+  </div>
+  <iframe id="viewer" name="review-frame" title="Review workspace"></iframe>
+</main>
+<script id="workshop-resources" type="application/json">{"id":"a652295afaaa47be7b6f61951e17e5067e08ebcbf0a42120602cb3db22ac5f9a","filename":"printed-books-consensus.html","documents":[{"id":"09aac919a55d8e03","label":"الأسامي والكني - بن حنبل - ت الجديع - ط الأقصى / 20164_1-20","kind":"ocr","status_class":"ocr-unresolved","status_text":"0 unresolved words · 594 consensus suggestions awaiting confirmation","url":"review/assets/ef8eb96fc1bae112ee867087e86cf45914ce1b11f294ca3ca237cbb7a5321a18.js","digest":"ef8eb96fc1bae112ee867087e86cf45914ce1b11f294ca3ca237cbb7a5321a18"},{"id":"c59f0d56db0cbe4a","label":"الإنتقاء في فضائل الثلاثة الأئمة الفقهاء - ابن عبد البر - ط القدسي / 11855_1-20","kind":"ocr","status_class":"ocr-unresolved","status_text":"0 unresolved words · 750 consensus suggestions awaiting confirmation","url":"review/assets/c5edb1eb194069ef66fb3d02567abc6e1b7ec5e47c68d7af29a8255e7c1a94a6.js","digest":"c5edb1eb194069ef66fb3d02567abc6e1b7ec5e47c68d7af29a8255e7c1a94a6"}]}</script>
+<script id="workshop-state" type="application/json">{"schema":"cairo_workshop_session","version":1,"bundle":"a652295afaaa47be7b6f61951e17e5067e08ebcbf0a42120602cb3db22ac5f9a","active":"09aac919a55d8e03","drafts":{},"saved_at":null}</script>
+<script>
+/* Workshop-only session controller. Build with python scripts/build_portable_review.py. */
+'use strict';
+const pristine = '<!doctype html>\n' + document.documentElement.outerHTML;
+const resources = JSON.parse(document.getElementById('workshop-resources').textContent);
+const state = JSON.parse(document.getElementById('workshop-state').textContent);
+const viewer = document.getElementById('viewer'), nav = document.getElementById('documents');
+const status = document.getElementById('status'), saveButton = document.getElementById('save');
+let active = null, ready = false, dirty = false, busy = false;
+let selection = 0;
+const documents = resources.documents;
+const loads = new Map();
+window.workshopDocumentLoaded = (digest, html) => {
+  const doc=documents.find(item=>item.digest===digest);
+  if(doc && typeof html==='string')doc.html=html;
+};
+function ensureDocument(doc) {
+  if(typeof doc.html==='string')return Promise.resolve(doc.html);
+  if(loads.has(doc.id))return loads.get(doc.id);
+  const promise=new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    const timer=setTimeout(()=>finish(Error('Loading timed out. Select the document again to retry.')),120000);
+    function finish(error){clearTimeout(timer);script.remove();if(error){loads.delete(doc.id);reject(error);}else resolve(doc.html);}
+    script.onload=()=>finish(typeof doc.html==='string'?null:Error('Document data was not returned.'));
+    script.onerror=()=>finish(Error('Could not load document. Check the connection and select it again.'));
+    script.src=doc.url;document.head.append(script);
+  });
+  loads.set(doc.id,promise);return promise;
+}
+if (state.schema !== 'cairo_workshop_session' || state.version !== 1 || state.bundle !== resources.id) throw Error('Incompatible workshop session.');
+function message(text, error=false) {status.textContent=text;status.dataset.error=String(error);}
+function changed() {dirty=true;message('Unsaved changes — click Save HTML before closing.');}
+window.workshopChanged = source => {if(source===viewer.contentWindow && ready)changed();};
+function capture() {
+  if (active && ready) state.drafts[active.id] = viewer.contentWindow.workshopReview.capture();
+}
+async function selectDocument(id) {
+  if (busy) return;
+  capture();
+  const next = documents.find(doc => doc.id === id);
+  if (!next) throw Error('Unknown document.');
+  active=next;ready=false;state.active=id;
+  const ticket=++selection;
+  saveButton.disabled=true;viewer.srcdoc='';
+  message('Loading '+next.label+'…');
+  for (const link of nav.querySelectorAll('[data-document]')) {
+    link.setAttribute('aria-current',String(link.dataset.document===id));
+    link.classList.toggle('active',link.dataset.document===id);
+  }
+  try {
+    const html=await ensureDocument(next);
+    if(ticket===selection)viewer.srcdoc=html;
+  }catch(error){if(ticket===selection)message(error.message,true);}
+}
+for (const kind of ['metadata','ocr']) {
+  const group=documents.filter(doc=>doc.kind===kind);
+  if (!group.length) continue;
+  const title=document.createElement('h2');title.textContent=kind==='metadata'?'Metadata':'OCR';nav.append(title);
+  const list=document.createElement(kind==='ocr'?'ol':'div');list.className='review-list';nav.append(list);
+  for (const doc of group) {
+    const link=document.createElement('a');link.href='#';link.className='review-link '+(doc.status_class||'');link.title=doc.status_text||'';link.textContent=doc.label;link.dataset.document=doc.id;
+    link.addEventListener('click',event=>{event.preventDefault();selectDocument(doc.id);});
+    if(kind==='ocr'){const li=document.createElement('li');li.append(link);list.append(li);}else list.append(link);
+  }
+}
+window.addEventListener('message',event=>{
+  if(event.source!==viewer.contentWindow)return;
+  if(event.data?.type==='workshop-ready') {
+    if(!viewer.contentWindow.workshopReview)return;
+    try {
+      viewer.contentWindow.workshopReview.restore(state.drafts[active.id]);
+      ready=true;saveButton.disabled=false;
+      if (!dirty) message(state.saved_at?'Saved HTML opened. Further edits need another Save HTML.':'No autosave. Use Save HTML before closing.');
+    } catch(error){message('Could not restore this document: '+error.message,true);}
+  } else if(event.data?.type==='workshop-dirty' && ready) changed();
+  else if(event.data?.type==='openiti-export-ocr-dataset-json') exportAll('json');
+  else if(event.data?.type==='openiti-export-ocr-dataset-markdown') exportAll('md');
+});
+function safeJson(value) {return JSON.stringify(value).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');}
+function savedHtml() {
+  if (!ready) throw Error('Wait for the document to finish loading.');
+  capture();state.saved_at=new Date().toISOString();
+  function replaceData(html,id,value){
+    const opening='<script id="'+id+'" type="application/json">';
+    const start=html.indexOf(opening)+opening.length,end=html.indexOf('<'+'/script>',start);
+    if(start<opening.length||end<start)throw Error('Missing session container.');
+    return html.slice(0,start)+safeJson(value)+html.slice(end);
+  }
+  const embedded={...resources,documents:documents.map(doc=>{
+    if(typeof doc.html!=='string')throw Error('Some documents have not downloaded yet.');
+    const {url,digest,...inline}=doc;return inline;
+  })};
+  return replaceData(replaceData(pristine,'workshop-resources',embedded),'workshop-state',state);
+}
+function download(content,name,type) {
+  const url=URL.createObjectURL(new Blob([content],{type})),link=document.createElement('a');
+  link.href=url;link.download=name;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+saveButton.addEventListener('click',async()=>{
+  if(busy||!ready)return;
+  busy=true;saveButton.disabled=true;
+  try {
+    for(const [index,doc] of documents.entries()){
+      message('Preparing offline HTML: document '+(index+1)+' of '+documents.length+'…');
+      await ensureDocument(doc);
+    }
+    download(savedHtml(),resources.filename.replace(/\.html$/,'')+'-saved.html','text/html;charset=utf-8');
+    dirty=false;message('HTML download requested. Check that it finished; reopen that downloaded file to continue.');
+  } catch(error){message('Save failed: '+error.message+' Your edits remain in this open page.',true);}
+  finally{busy=false;saveButton.disabled=!ready;}
+});
+async function loadForExport(doc) {
+  if(active?.id===doc.id && ready)return {api:viewer.contentWindow.workshopReview,dispose(){}};
+  const html=await ensureDocument(doc);
+  const frame=document.createElement('iframe');frame.hidden=true;document.body.append(frame);
+  return new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>finish(Error('Timed out loading '+doc.label)),30000);
+    function finish(error) {clearTimeout(timer);window.removeEventListener('message',receive);if(error){frame.remove();reject(error);}}
+    function receive(event) {
+      if(event.source!==frame.contentWindow||event.data?.type!=='workshop-ready')return;
+      try {const api=frame.contentWindow.workshopReview;api.restore(state.drafts[doc.id]);finish();resolve({api,dispose:()=>frame.remove()});}
+      catch(error){finish(error);}
+    }
+    window.addEventListener('message',receive);frame.srcdoc=html;
+  });
+}
+async function exportAll(format) {
+  if(busy||!ready)return;
+  capture();busy=true;saveButton.disabled=true;
+  try {
+    const results=[];
+    for(const doc of documents.filter(doc=>doc.kind==='ocr')) {
+      const loaded=await loadForExport(doc);
+      try {results.push({doc,result:loaded.api.exportData(format)});}finally{loaded.dispose();}
+    }
+    if(results.some(item=>!item.result.complete) && !confirm('Some documents have unresolved readings, pending suggestions or layout issues. Export incomplete results anyway?'))return;
+    const content=format==='json'?JSON.stringify({schema:'openiti_ocr_ground_truth_dataset',schema_version:1,documents:results.map(item=>JSON.parse(item.result.json))},null,2):results.map(item=>'<!-- '+item.doc.label.replace(/--/g,'—')+' -->\n'+item.result.markdown).join('\n\n');
+    download(content,'workshop-transcriptions.'+format,format==='json'?'application/json':'text/markdown');
+  }catch(error){message('Export failed: '+error.message,true);}
+  finally{busy=false;saveButton.disabled=false;}
+}
+window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
+const layout=document.querySelector('.layout'),handle=document.getElementById('splitHandle'),toggle=document.getElementById('sidebarToggleBtn');
+let fontSize=16;
+for(const [id,delta] of [['shellFontSmallerBtn',-1],['shellFontLargerBtn',1]])document.getElementById(id).onclick=()=>{
+  fontSize=Math.max(12,Math.min(24,fontSize+delta));document.body.style.setProperty('--review-font-size',fontSize+'px');
+};
+toggle.onclick=()=>{
+  const collapsed=document.body.classList.toggle('sidebar-collapsed');toggle.textContent=collapsed?'›':'‹';
+  toggle.setAttribute('aria-expanded',String(!collapsed));toggle.title=collapsed?'Expand file list':'Collapse file list';toggle.setAttribute('aria-label',toggle.title);
+};
+function resizeSidebar(width){layout.style.setProperty('--sidebar-width',Math.max(120,Math.min(window.innerWidth-200,width))+'px');}
+handle.addEventListener('pointerdown',event=>{
+  if(event.target===toggle||document.body.classList.contains('sidebar-collapsed'))return;
+  handle.setPointerCapture(event.pointerId);handle.classList.add('active');event.preventDefault();
+});
+handle.addEventListener('pointermove',event=>{if(handle.hasPointerCapture(event.pointerId))resizeSidebar(event.clientX);});
+handle.addEventListener('pointerup',event=>{if(handle.hasPointerCapture(event.pointerId))handle.releasePointerCapture(event.pointerId);handle.classList.remove('active');});
+handle.addEventListener('keydown',event=>{if(event.target!==handle||!['ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();resizeSidebar(document.getElementById('reviewSidebar').offsetWidth+(event.key==='ArrowRight'?20:-20));});
+selectDocument(state.active || documents[0].id);
+
+</script></body></html>

@@ -1,0 +1,2 @@
+# Share the project's pinned dependencies without maintaining a second version list.
+-r ../../requirements.txt

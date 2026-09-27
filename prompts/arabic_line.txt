@@ -1,0 +1,4 @@
+Transcribe the complete Arabic text line in this image. Ignore partial neighbouring lines.
+Preserve the wording, spelling, punctuation, digits and visible diacritics. Do not add diacritics that are not visible. Do not correct, complete, translate or modernise the text.
+Return only the final transcription, with no introduction, explanation, reasoning, self-correction, alternative readings, Markdown fences or quotation marks around the answer.
+If a word cannot be read, write XXX in its place. Use one XXX per unreadable word. Do not guess missing text or discuss your uncertainty.

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__TITLE__</title>
+<style>
+__STYLE__
+#status[data-error=true]{color:#b91c1c}
+button:disabled{opacity:.5;cursor:wait}
+</style></head><body>
+<main class="layout">
+  <nav class="sidebar" id="reviewSidebar">
+    <h1>__TITLE__</h1>
+    <div class="shell-controls" aria-label="Review shell controls">
+      <button id="shellFontSmallerBtn" type="button">A-</button>
+      <button id="shellFontLargerBtn" type="button">A+</button>
+    </div>
+    <div class="dataset-autosave">
+      <button id="save" type="button" disabled>Save HTML</button>
+      <span id="status" class="dataset-autosave-status" role="status">Loading document…</span>
+    </div>
+    <div id="documents"></div>
+  </nav>
+  <div class="split-handle" id="splitHandle" role="separator" aria-orientation="vertical" aria-label="Resize file list" tabindex="0">
+    <button class="split-toggle" id="sidebarToggleBtn" type="button" aria-controls="reviewSidebar" aria-expanded="true" aria-label="Collapse file list" title="Collapse file list">‹</button>
+  </div>
+  <iframe id="viewer" name="review-frame" title="Review workspace"></iframe>
+</main>
+<script id="workshop-resources" type="application/json">__RESOURCES__</script>
+<script id="workshop-state" type="application/json">__STATE__</script>
+<script>
+__SCRIPT__
+</script></body></html>

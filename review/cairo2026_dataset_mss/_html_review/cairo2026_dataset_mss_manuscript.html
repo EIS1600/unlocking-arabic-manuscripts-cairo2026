@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairo2026 · Manuscripts — experimental review</title>
+<style>
+@font-face {
+  font-family: "ReviewArabic";
+  src: local("Amiri"), local("Amiri Regular");
+  font-style: normal;
+  font-weight: 400;
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-089F, U+08A0-08FF,
+    U+FB50-FDFF, U+FE70-FEFF, U+10E60-10E7F, U+10EC0-10EFF, U+1EE00-1EEFF;
+}
+@font-face {
+  font-family: "ReviewArabic";
+  src: local("Amiri Bold"), local("Amiri");
+  font-style: normal;
+  font-weight: 700;
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-089F, U+08A0-08FF,
+    U+FB50-FDFF, U+FE70-FEFF, U+10E60-10E7F, U+10EC0-10EFF, U+1EE00-1EEFF;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; color: #111827; background: #fff; font-family: "ReviewArabic", Arial, sans-serif;
+  font-size: var(--review-font-size, 16px); }
+button { font: inherit; letter-spacing: 0; }
+.layout { --sidebar-width: 340px; height: 100%; display: grid;
+  grid-template-columns: minmax(120px, var(--sidebar-width)) 12px minmax(0, 1fr); }
+body.sidebar-collapsed .layout { grid-template-columns: 0 12px minmax(0, 1fr); }
+body.sidebar-collapsed .sidebar { display: none; }
+.sidebar { grid-column: 1; grid-row: 1; min-width: 0; overflow: auto; padding: 1rem;
+  background: #f9fafb; }
+.shell-controls { display: flex; gap: .4rem; margin: 0 0 .85rem; }
+.shell-controls button { min-width: 2.35rem; border: 1px solid #9ca3af; border-radius: 4px;
+  background: #fff; color: #111827; cursor: pointer; }
+.shell-controls button:hover { background: #eef2ff; }
+.dataset-autosave { margin: 0 0 .85rem; padding: .55rem .6rem; border: 1px solid #d1d5db;
+  border-radius: 4px; background: #fff; }
+.dataset-autosave button { width: 100%; min-height: 30px; padding: .25rem .45rem;
+  border: 1px solid #9ca3af; border-radius: 4px; background: #fff; color: #111827;
+  cursor: pointer; }
+.dataset-autosave button:hover { background: #eef2ff; border-color: #2563eb; }
+.dataset-autosave-status { display: block; margin-top: .35rem; color: #6b7280;
+  font: .78rem/1.35 Arial, sans-serif; }
+.dataset-autosave.connected .dataset-autosave-status { color: #047857; }
+.dataset-autosave.error .dataset-autosave-status { color: #b91c1c; }
+.split-handle { grid-column: 2; grid-row: 1; position: relative; width: 12px;
+  cursor: col-resize; touch-action: none;
+  background: #e5e7eb; border-left: 1px solid #d1d5db;
+  border-right: 1px solid #d1d5db; }
+.split-handle:hover, .split-handle.active { background: #bfdbfe; }
+.split-toggle { position: absolute; top: 50%; left: 50%; z-index: 2; width: 22px; height: 42px;
+  display: grid; place-items: center; padding: 0; transform: translate(-50%, -50%);
+  border: 1px solid #9ca3af; border-radius: 11px; color: #374151; background: #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, .2); cursor: pointer; font-family: Arial, sans-serif;
+  font-size: 1.15rem; line-height: 1; }
+.split-toggle:hover, .split-toggle:focus-visible { color: #1d4ed8; border-color: #2563eb;
+  background: #eff6ff; }
+body.sidebar-collapsed .split-handle { cursor: default; }
+h1 { margin: 0 0 .6rem; font-size: 1.2em; letter-spacing: 0; }
+h2 { margin: 1rem 0 .45rem; font-size: .95em; letter-spacing: 0; }
+ol { margin: 0; padding-left: 1.35rem; }
+li { margin: .3rem 0; overflow-wrap: anywhere; }
+.review-list { display: grid; gap: .3rem; }
+.review-link { display: block; margin-left: -.35rem; padding: .28rem .35rem;
+  border-radius: 4px; color: #1d4ed8; text-decoration: none; }
+.review-link.ocr-resolved { color: #047857; }
+.review-link.ocr-unresolved { color: #b91c1c; }
+.review-link:hover { background: #eef2ff; text-decoration: underline; }
+.review-link.active { color: #111827; background: #dbeafe; font-weight: 700;
+  text-decoration: none; }
+.review-link.active.ocr-resolved { color: #065f46; }
+.review-link.active.ocr-unresolved { color: #991b1b; }
+.review-link:focus-visible { outline: 2px solid #93c5fd; outline-offset: 1px; }
+.empty { color: #6b7280; font-size: .9em; }
+iframe { grid-column: 3; grid-row: 1; width: 100%; height: 100%; border: 0; }
+.placeholder { grid-column: 3; grid-row: 1; display: grid; place-items: center;
+  height: 100%; color: #6b7280; }
+@media (max-width: 900px) {
+  .layout { display: block; height: auto; }
+  .sidebar { max-height: 45vh; border-right: 0; border-bottom: 1px solid #d1d5db; }
+  .split-handle { display: none; }
+  iframe, .placeholder { height: 70vh; }
+}
+</style>
+</head>
+<body>
+<main class="layout">
+  <nav class="sidebar" id="reviewSidebar">
+    <h1>Cairo2026 · Manuscripts — experimental review</h1>
+    <div class="shell-controls" aria-label="Review shell controls">
+      <button id="shellFontSmallerBtn" type="button">A-</button>
+      <button id="shellFontLargerBtn" type="button">A+</button>
+    </div>
+    <div class="dataset-autosave" id="datasetAutosave">
+      <button id="connectDatasetBtn" type="button">Connect Dataset</button>
+      <span class="dataset-autosave-status" id="datasetAutosaveStatus">
+        Browser autosave active; connect the dataset folder for file autosave.
+      </span>
+    </div>
+    <section class="review-section"><h2>Metadata</h2><p class="empty">Not generated yet.</p></section>
+    <section class="review-section"><h2>OCR</h2><ol><li><a class="review-link ocr-unresolved" target="review-frame" href="ocr_manuscript/MET%201981.373_1-20.html" title="2830 unresolved words">MET 1981.373_1-20</a></li><li><a class="review-link ocr-unresolved" target="review-frame" href="ocr_manuscript/Paris%20arabe%203466%20%28seq%20D%2C%20P1%29%20854-1450%20ann.%20BG%20%20%204.4.23_1-20.html" title="1222 unresolved words">Paris arabe 3466 (seq D, P1) 854-1450 ann. BG   4.4.23_1-20</a></li></ol></section>
+  </nav>
+  <div class="split-handle" id="splitHandle" role="separator" aria-orientation="vertical"
+    aria-label="Resize file list" tabindex="0">
+    <button class="split-toggle" id="sidebarToggleBtn" type="button"
+      aria-controls="reviewSidebar" aria-expanded="true"
+      aria-label="Collapse file list" title="Collapse file list">‹</button>
+  </div>
+  <iframe name="review-frame" src="ocr_manuscript/MET%201981.373_1-20.html"></iframe>
+</main>
+<script>
+const layout = document.querySelector(".layout");
+const handle = document.getElementById("splitHandle");
+const reviewFrame = document.querySelector('iframe[name="review-frame"]');
+const reviewLinks = Array.from(document.querySelectorAll(".review-link"));
+const storageKey = "html-review-sidebar-width:cairo2026_dataset_mss";
+const collapsedStorageKey = "html-review-sidebar-collapsed:cairo2026_dataset_mss";
+const fontStorageKey = "html-review-font-scale:cairo2026_dataset_mss";
+const datasetName = "cairo2026_dataset_mss";
+const agentConfigs = {};
+const agentConfigLoads = new Map();
+function loadAgentConfig(documentName) {
+  if (!agentConfigLoads.has(documentName)) {
+    agentConfigLoads.set(documentName, new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = agentConfigs[documentName].config_script;
+      script.onload = () => resolve(window.openitiAgentConfigs?.[documentName]);
+      script.onerror = () => reject(new Error("Cannot load agent choices"));
+      document.head.append(script);
+    }));
+  }
+  return agentConfigLoads.get(documentName);
+}
+const ocrExportEntries = [{"href": "ocr_manuscript/MET%201981.373_1-20.html", "markdown_path": "MET 1981.373_1-20.md", "json_path": "MET 1981.373_1-20.json"}, {"href": "ocr_manuscript/Paris%20arabe%203466%20%28seq%20D%2C%20P1%29%20854-1450%20ann.%20BG%20%20%204.4.23_1-20.html", "markdown_path": "Paris arabe 3466 (seq D, P1) 854-1450 ann. BG   4.4.23_1-20.md", "json_path": "Paris arabe 3466 (seq D, P1) 854-1450 ann. BG   4.4.23_1-20.json"}];
+const ocrGroundTruthDir = `${datasetName}_ground_truth_ocr`;
+const ocrGroundTruthJsonDir = `${datasetName}_ground_truth_ocr_json`;
+const autosavePanel = document.getElementById("datasetAutosave");
+const connectDatasetBtn = document.getElementById("connectDatasetBtn");
+const datasetAutosaveStatus = document.getElementById("datasetAutosaveStatus");
+const autosaveHandleKey = `dataset-root:${datasetName}`;
+const autosaveWriteQueues = new Map();
+let autosaveRootHandle = null;
+const savedWidth = Number(window.localStorage.getItem("cairo2026-workshop:" + storageKey));
+const savedCollapsed = window.localStorage.getItem("cairo2026-workshop:" + collapsedStorageKey) === "true";
+const savedFontScale = Number(window.localStorage.getItem("cairo2026-workshop:" + fontStorageKey));
+let fontScale = Number.isFinite(savedFontScale) && savedFontScale > 0 ? savedFontScale : 1;
+
+function setDatasetAutosaveStatus(message, state = "") {
+  datasetAutosaveStatus.textContent = message;
+  autosavePanel.classList.toggle("connected", state === "connected");
+  autosavePanel.classList.toggle("error", state === "error");
+  connectDatasetBtn.textContent = state === "connected" ? "Change Dataset Folder" : "Connect Dataset";
+}
+
+function openAutosaveDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = window.indexedDB.open("cairo2026-workshop-review", 1);
+    request.addEventListener("upgradeneeded", () => {
+      if (!request.result.objectStoreNames.contains("directory-handles")) {
+        request.result.createObjectStore("directory-handles");
+      }
+    });
+    request.addEventListener("success", () => resolve(request.result));
+    request.addEventListener("error", () => reject(request.error));
+  });
+}
+
+async function storedAutosaveHandle() {
+  const database = await openAutosaveDatabase();
+  try {
+    return await new Promise((resolve, reject) => {
+      const request = database
+        .transaction("directory-handles", "readonly")
+        .objectStore("directory-handles")
+        .get(autosaveHandleKey);
+      request.addEventListener("success", () => resolve(request.result || null));
+      request.addEventListener("error", () => reject(request.error));
+    });
+  } finally {
+    database.close();
+  }
+}
+
+async function rememberAutosaveHandle(handle) {
+  const database = await openAutosaveDatabase();
+  try {
+    await new Promise((resolve, reject) => {
+      const request = database
+        .transaction("directory-handles", "readwrite")
+        .objectStore("directory-handles")
+        .put(handle, autosaveHandleKey);
+      request.addEventListener("success", () => resolve());
+      request.addEventListener("error", () => reject(request.error));
+    });
+  } finally {
+    database.close();
+  }
+}
+
+function validAutosavePath(path) {
+  const parts = String(path || "").split("/");
+  const agentPath = parts[0] === "_agent_review" && /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(parts[1] || "") && parts[2] === "ocr" && parts.at(-1).endsWith(".json");
+  return parts.length >= 3 && (parts[0] === "review_state" || agentPath) &&
+    parts.every(part => part && part !== "." && part !== "..");
+}
+
+function validReviewOutputPath(path) {
+  const parts = String(path || "").split("/");
+  const filename = parts.at(-1) || "";
+  return parts.length >= 3 && parts[0] === "review_output" &&
+    (filename.endsWith(".json") || filename.endsWith(".md")) &&
+    parts.every(part => part && part !== "." && part !== "..");
+}
+
+async function autosaveFileHandle(path, create) {
+  if (!autosaveRootHandle || !validAutosavePath(path)) {
+    throw new Error("Invalid or unavailable review autosave path.");
+  }
+  const parts = path.split("/");
+  const filename = parts.pop();
+  let directory = autosaveRootHandle;
+  for (const part of parts) {
+    directory = await directory.getDirectoryHandle(part, {create});
+  }
+  return directory.getFileHandle(filename, {create});
+}
+
+async function readAutosaveFile(path) {
+  try {
+    const handle = await autosaveFileHandle(path, false);
+    const file = await handle.getFile();
+    return JSON.parse(await file.text());
+  } catch (error) {
+    if (error?.name === "NotFoundError") return null;
+    throw error;
+  }
+}
+
+async function writeAutosaveFile(path, payload) {
+  const handle = await autosaveFileHandle(path, true);
+  const writable = await handle.createWritable();
+  try {
+    await writable.write(JSON.stringify(payload) + "\n");
+  } finally {
+    await writable.close();
+  }
+}
+
+async function reviewOutputFileHandle(path, create) {
+  if (!autosaveRootHandle || !validReviewOutputPath(path)) {
+    throw new Error("Invalid or unavailable automatic review-output path.");
+  }
+  const parts = path.split("/");
+  const filename = parts.pop();
+  let directory = autosaveRootHandle;
+  for (const part of parts) {
+    directory = await directory.getDirectoryHandle(part, {create});
+  }
+  return directory.getFileHandle(filename, {create});
+}
+
+async function writeReviewOutputFile(path, content) {
+  const handle = await reviewOutputFileHandle(path, true);
+  const writable = await handle.createWritable();
+  try {
+    await writable.write(String(content));
+  } finally {
+    await writable.close();
+  }
+}
+
+async function deleteReviewOutputFile(path) {
+  if (!autosaveRootHandle || !validReviewOutputPath(path)) {
+    throw new Error("Invalid or unavailable automatic review-output path.");
+  }
+  const parts = path.split("/");
+  const filename = parts.pop();
+  let directory = autosaveRootHandle;
+  try {
+    for (const part of parts) {
+      directory = await directory.getDirectoryHandle(part, {create: false});
+    }
+    await directory.removeEntry(filename);
+  } catch (error) {
+    if (error?.name !== "NotFoundError") throw error;
+  }
+}
+
+function notifyReviewFramesAutosaveConnection() {
+  document.querySelectorAll("iframe").forEach(frame => {
+    frame.contentWindow?.postMessage({
+      type: "openiti-autosave-connection",
+      connected: Boolean(autosaveRootHandle),
+      dataset: datasetName,
+    }, "*");
+  });
+}
+
+async function activateAutosaveHandle(handle, requestPermission) {
+  if (!handle) return false;
+  let permission = await handle.queryPermission({mode: "readwrite"});
+  if (permission !== "granted" && requestPermission) {
+    permission = await handle.requestPermission({mode: "readwrite"});
+  }
+  if (permission !== "granted") return false;
+  autosaveRootHandle = handle;
+  setDatasetAutosaveStatus(
+    `File autosave connected to ${handle.name}.`,
+    "connected",
+  );
+  notifyReviewFramesAutosaveConnection();
+  return true;
+}
+
+async function connectDatasetAutosave() {
+  if (typeof window.showDirectoryPicker !== "function") {
+    setDatasetAutosaveStatus(
+      "Direct file autosave is unavailable in this browser; browser autosave remains active.",
+      "error",
+    );
+    return;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({mode: "readwrite"});
+    if (handle.name !== datasetName && !window.confirm(
+      `You selected “${handle.name}”, but this review belongs to “${datasetName}”. ` +
+      "Use the selected folder anyway?"
+    )) return;
+    if (!await activateAutosaveHandle(handle, true)) {
+      setDatasetAutosaveStatus("Write access was not granted; browser autosave remains active.", "error");
+      return;
+    }
+    await rememberAutosaveHandle(handle);
+  } catch (error) {
+    if (error?.name === "AbortError") return;
+    console.warn("Could not connect dataset autosave", error);
+    setDatasetAutosaveStatus(
+      `Could not connect file autosave: ${error?.message || error}`,
+      "error",
+    );
+  }
+}
+
+async function restoreDatasetAutosaveConnection() {
+  if (typeof window.showDirectoryPicker !== "function") return;
+  try {
+    const handle = await storedAutosaveHandle();
+    if (!handle) return;
+    if (!await activateAutosaveHandle(handle, false)) {
+      setDatasetAutosaveStatus(
+        "Reconnect the dataset folder to resume file autosave; browser autosave is active.",
+      );
+    }
+  } catch (error) {
+    console.warn("Could not restore dataset autosave connection", error);
+  }
+}
+
+function clampSidebarWidth(width) {
+  const min = 120;
+  const max = Math.max(min, window.innerWidth - 420);
+  return Math.min(Math.max(width, min), max);
+}
+
+function setSidebarWidth(width) {
+  const nextWidth = clampSidebarWidth(width);
+  layout.style.setProperty("--sidebar-width", `${nextWidth}px`);
+  window.localStorage.setItem("cairo2026-workshop:" + storageKey, String(nextWidth));
+}
+
+if (Number.isFinite(savedWidth) && savedWidth > 0) {
+  setSidebarWidth(savedWidth);
+}
+
+const sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
+function setSidebarCollapsed(collapsed) {
+  document.body.classList.toggle("sidebar-collapsed", collapsed);
+  const label = collapsed ? "Show file list" : "Collapse file list";
+  sidebarToggleBtn.textContent = collapsed ? "›" : "‹";
+  sidebarToggleBtn.setAttribute("aria-expanded", String(!collapsed));
+  sidebarToggleBtn.setAttribute("aria-label", label);
+  sidebarToggleBtn.title = label;
+  window.localStorage.setItem("cairo2026-workshop:" + collapsedStorageKey, String(collapsed));
+}
+
+setSidebarCollapsed(savedCollapsed);
+
+function setFontScale(scale) {
+  const next = Math.min(1.8, Math.max(0.75, scale));
+  document.documentElement.style.setProperty("--review-font-size", `${(16 * next).toFixed(1)}px`);
+  window.localStorage.setItem("cairo2026-workshop:" + fontStorageKey, String(next));
+}
+
+function adjustFontScale(delta) {
+  fontScale = Math.min(1.8, Math.max(0.75, fontScale + delta));
+  setFontScale(fontScale);
+}
+
+setFontScale(fontScale);
+
+function absoluteReviewHref(href) {
+  if (!href) return "";
+  try {
+    return new URL(href, window.location.href).href;
+  } catch (_error) {
+    return href;
+  }
+}
+
+function setActiveReviewLink(href) {
+  const activeHref = absoluteReviewHref(href);
+  reviewLinks.forEach(link => {
+    const active = absoluteReviewHref(link.getAttribute("href")) === activeHref;
+    link.classList.toggle("active", active);
+    if (active) {
+      link.setAttribute("aria-current", "page");
+    } else {
+      link.removeAttribute("aria-current");
+    }
+  });
+}
+
+function setOcrLinkStatus(href, unresolved, pendingAgent = 0) {
+  const targetHref = absoluteReviewHref(href);
+  const count = Number(unresolved);
+  if (!Number.isFinite(count)) return;
+  reviewLinks.forEach(link => {
+    if (absoluteReviewHref(link.getAttribute("href")) !== targetHref) return;
+    if (!link.classList.contains("ocr-resolved") && !link.classList.contains("ocr-unresolved")) return;
+    link.classList.toggle("ocr-resolved", count === 0 && !pendingAgent);
+    link.classList.toggle("ocr-unresolved", count !== 0 || !!pendingAgent);
+    link.setAttribute("title", `${count} unresolved words${pendingAgent ? ` · ${pendingAgent} suggestions awaiting confirmation` : ""}`);
+  });
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function utf8Bytes(text) {
+  return new TextEncoder().encode(text);
+}
+
+function writeUint16(bytes, offset, value) {
+  bytes[offset] = value & 0xff;
+  bytes[offset + 1] = (value >>> 8) & 0xff;
+}
+
+function writeUint32(bytes, offset, value) {
+  bytes[offset] = value & 0xff;
+  bytes[offset + 1] = (value >>> 8) & 0xff;
+  bytes[offset + 2] = (value >>> 16) & 0xff;
+  bytes[offset + 3] = (value >>> 24) & 0xff;
+}
+
+function concatBytes(chunks) {
+  const total = chunks.reduce((size, chunk) => size + chunk.length, 0);
+  const output = new Uint8Array(total);
+  let offset = 0;
+  chunks.forEach(chunk => {
+    output.set(chunk, offset);
+    offset += chunk.length;
+  });
+  return output;
+}
+
+function makeCrcTable() {
+  const table = new Uint32Array(256);
+  for (let index = 0; index < 256; index += 1) {
+    let value = index;
+    for (let bit = 0; bit < 8; bit += 1) {
+      value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+    }
+    table[index] = value >>> 0;
+  }
+  return table;
+}
+
+const crcTable = makeCrcTable();
+
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc = crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function zipDateTime() {
+  const now = new Date();
+  return {
+    time: (now.getHours() << 11) | (now.getMinutes() << 5) | Math.floor(now.getSeconds() / 2),
+    date: ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate(),
+  };
+}
+
+function zipStore(files) {
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  const stamp = zipDateTime();
+  files.forEach(file => {
+    const nameBytes = utf8Bytes(file.path);
+    const contentBytes = utf8Bytes(file.content);
+    const crc = crc32(contentBytes);
+    const local = new Uint8Array(30 + nameBytes.length + contentBytes.length);
+    writeUint32(local, 0, 0x04034b50);
+    writeUint16(local, 4, 20);
+    writeUint16(local, 6, 0x0800);
+    writeUint16(local, 8, 0);
+    writeUint16(local, 10, stamp.time);
+    writeUint16(local, 12, stamp.date);
+    writeUint32(local, 14, crc);
+    writeUint32(local, 18, contentBytes.length);
+    writeUint32(local, 22, contentBytes.length);
+    writeUint16(local, 26, nameBytes.length);
+    writeUint16(local, 28, 0);
+    local.set(nameBytes, 30);
+    local.set(contentBytes, 30 + nameBytes.length);
+    localParts.push(local);
+
+    const central = new Uint8Array(46 + nameBytes.length);
+    writeUint32(central, 0, 0x02014b50);
+    writeUint16(central, 4, 20);
+    writeUint16(central, 6, 20);
+    writeUint16(central, 8, 0x0800);
+    writeUint16(central, 10, 0);
+    writeUint16(central, 12, stamp.time);
+    writeUint16(central, 14, stamp.date);
+    writeUint32(central, 16, crc);
+    writeUint32(central, 20, contentBytes.length);
+    writeUint32(central, 24, contentBytes.length);
+    writeUint16(central, 28, nameBytes.length);
+    writeUint16(central, 30, 0);
+    writeUint16(central, 32, 0);
+    writeUint16(central, 34, 0);
+    writeUint16(central, 36, 0);
+    writeUint32(central, 38, 0);
+    writeUint32(central, 42, offset);
+    central.set(nameBytes, 46);
+    centralParts.push(central);
+    offset += local.length;
+  });
+  const centralOffset = offset;
+  const centralBytes = concatBytes(centralParts);
+  const end = new Uint8Array(22);
+  writeUint32(end, 0, 0x06054b50);
+  writeUint16(end, 4, 0);
+  writeUint16(end, 6, 0);
+  writeUint16(end, 8, files.length);
+  writeUint16(end, 10, files.length);
+  writeUint32(end, 12, centralBytes.length);
+  writeUint32(end, 16, centralOffset);
+  writeUint16(end, 20, 0);
+  return concatBytes([...localParts, centralBytes, end]);
+}
+
+function activeFrameMatches(href) {
+  if (!reviewFrame?.contentWindow) return false;
+  const activeLink = document.querySelector(".review-link.active");
+  return absoluteReviewHref(activeLink?.getAttribute("href")) === absoluteReviewHref(href);
+}
+
+function loadOcrReviewWindow(entry) {
+  if (activeFrameMatches(entry.href)) {
+    return Promise.resolve({win: reviewFrame.contentWindow, frame: null});
+  }
+  return new Promise((resolve, reject) => {
+    const frame = document.createElement("iframe");
+    frame.style.display = "none";
+    const timeout = window.setTimeout(() => {
+      frame.remove();
+      reject(new Error(`Timed out while loading ${entry.href}`));
+    }, 30000);
+    frame.addEventListener("load", () => {
+      window.clearTimeout(timeout);
+      resolve({win: frame.contentWindow, frame});
+    }, {once: true});
+    frame.addEventListener("error", () => {
+      window.clearTimeout(timeout);
+      frame.remove();
+      reject(new Error(`Could not load ${entry.href}`));
+    }, {once: true});
+    frame.src = entry.href;
+    document.body.appendChild(frame);
+  });
+}
+
+function requestOcrPayload(win, entry, format) {
+  return new Promise((resolve, reject) => {
+    if (!win || typeof win.postMessage !== "function") {
+      reject(new Error(`${entry.href} is not an OCR review page.`));
+      return;
+    }
+    const requestId = `ocr-${format}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const responseType = format === "json" ? "openiti-ocr-json-result" : "openiti-ocr-markdown-result";
+    const requestType = format === "json" ? "openiti-collect-ocr-json" : "openiti-collect-ocr-markdown";
+    const entryPath = format === "json" ? entry.json_path : entry.markdown_path;
+    const timeout = window.setTimeout(() => {
+      window.removeEventListener("message", onMessage);
+      reject(new Error(`Timed out while collecting ${entryPath}`));
+    }, 30000);
+    function onMessage(event) {
+      const response = event.data;
+      if (!response || response.type !== responseType || response.requestId !== requestId) return;
+      if (event.source !== win) return;
+      window.clearTimeout(timeout);
+      window.removeEventListener("message", onMessage);
+      if (response.error) {
+        reject(new Error(`${entryPath}: ${response.error}`));
+        return;
+      }
+      resolve({
+        content: String(format === "json" ? response.json || "" : response.markdown || ""),
+        complete: response.complete !== false,
+        trainingReady: response.training_ready === true,
+        unresolved: Number(response.unresolved || 0),
+      });
+    }
+    window.addEventListener("message", onMessage);
+    win.postMessage({type: requestType, requestId}, "*");
+  });
+}
+
+async function collectOcrPayload(win, entry, format) {
+  return requestOcrPayload(win, entry, format);
+}
+
+let datasetExportRunning = false;
+
+async function exportCompleteOcrDataset(format) {
+  if (datasetExportRunning) return;
+  if (!ocrExportEntries.length) {
+    window.alert(`No OCR review pages are available for complete ${format.toUpperCase()} export.`);
+    return;
+  }
+  datasetExportRunning = true;
+  const datasetDir = format === "json" ? ocrGroundTruthJsonDir : ocrGroundTruthDir;
+  const pathKey = format === "json" ? "json_path" : "markdown_path";
+  const hiddenFrames = [];
+  try {
+    const files = [];
+    const incomplete = [];
+    const layoutIncomplete = [];
+    for (const entry of ocrExportEntries) {
+      const loaded = await loadOcrReviewWindow(entry);
+      if (loaded.frame) hiddenFrames.push(loaded.frame);
+      const result = await collectOcrPayload(loaded.win, entry, format);
+      if (!result.complete) incomplete.push(`${entry[pathKey]} (${result.unresolved} unresolved)`);
+      if (format === "json" && !result.trainingReady) layoutIncomplete.push(entry[pathKey]);
+      setOcrLinkStatus(entry.href, result.unresolved);
+      files.push({
+        path: `${datasetDir}/${entry[pathKey]}`,
+        content: result.content,
+      });
+    }
+    if (incomplete.length) {
+      const visible = incomplete.slice(0, 12).join("\n");
+      const extra = incomplete.length > 12 ? `\n...and ${incomplete.length - 12} more.` : "";
+      if (!window.confirm(`Some OCR reviews are incomplete:\n${visible}${extra}\n\nExport anyway?`)) return;
+    }
+    if (layoutIncomplete.length) {
+      const visible = layoutIncomplete.slice(0, 12).join("\n");
+      const extra = layoutIncomplete.length > 12
+        ? `\n...and ${layoutIncomplete.length - 12} more.` : "";
+      if (!window.confirm(
+        `Some OCR JSON reviews are not ready for Kraken training:\n${visible}${extra}` +
+        "\n\nExport them for evaluation or later layout correction anyway?"
+      )) return;
+    }
+    const zipBytes = zipStore(files);
+    downloadBlob(new Blob([zipBytes], {type: "application/zip"}), `${datasetDir}.zip`);
+  } catch (error) {
+    window.alert(`Complete dataset ${format.toUpperCase()} export failed: ${error.message || error}`);
+  } finally {
+    hiddenFrames.forEach(frame => frame.remove());
+    datasetExportRunning = false;
+  }
+}
+
+async function exportCompleteOcrMarkdownDataset() {
+  return exportCompleteOcrDataset("markdown");
+}
+
+async function exportCompleteOcrJsonDataset() {
+  return exportCompleteOcrDataset("json");
+}
+
+window.exportCompleteOcrMarkdownDataset = exportCompleteOcrMarkdownDataset;
+window.exportCompleteOcrJsonDataset = exportCompleteOcrJsonDataset;
+window.addEventListener("message", event => {
+  const message = event.data;
+  const sourceFrame = Array.from(document.querySelectorAll("iframe"))
+    .find(candidate => candidate.contentWindow === event.source);
+  if (!sourceFrame) return;
+  if (message?.type === "openiti-agent-review-ready") {
+    const href = sourceFrame === reviewFrame
+      ? document.querySelector(".review-link.active")?.getAttribute("href") || sourceFrame.getAttribute("src")
+      : sourceFrame.getAttribute("src");
+    const url = new URL(href, location.href);
+    const request = new URLSearchParams(url.hash.slice(1));
+    const documentName = request.get("document");
+    const route = agentConfigs[documentName];
+    if (route && route.run_id === request.get("agent-review")) {
+      loadAgentConfig(documentName).then(config => {
+        if (config && config.run_id === route.run_id && config.document === documentName)
+          event.source.postMessage({type:"openiti-agent-review-config",config:{...config,dataset_index:true}}, "*");
+      }).catch(error => setDatasetAutosaveStatus(error.message, "error"));
+    }
+    return;
+  }
+  if (message?.type === "openiti-agent-connect-dataset" && Object.keys(agentConfigs).length) {
+    connectDatasetAutosave(); return;
+  }
+  if (message?.type === "openiti-autosave-ready" || message?.type === "openiti-autosave-read") {
+    if (message.type === "openiti-autosave-ready") {
+      event.source?.postMessage({
+        type: "openiti-autosave-connection",
+        connected: Boolean(autosaveRootHandle),
+        dataset: datasetName,
+      }, "*");
+      return;
+    }
+    if (autosaveRootHandle && validAutosavePath(message.path)) {
+      readAutosaveFile(message.path).then(payload => {
+        event.source?.postMessage({
+          type: "openiti-autosave-resume",
+          path: message.path,
+          payload,
+        }, "*");
+      }).catch(error => {
+        event.source?.postMessage({
+          type: "openiti-autosave-error",
+          path: message.path,
+          error: String(error?.message || error),
+        }, "*");
+      });
+    }
+  } else if (message?.type === "openiti-autosave-write") {
+    if (!autosaveRootHandle) {
+      event.source?.postMessage({
+        type: "openiti-autosave-connection",
+        connected: false,
+        dataset: datasetName,
+      }, "*");
+      return;
+    }
+    if (!validAutosavePath(message.path)) {
+      event.source?.postMessage({
+        type: "openiti-autosave-error",
+        path: message.path,
+        error: "Invalid review autosave path.",
+      }, "*");
+      return;
+    }
+    const previous = autosaveWriteQueues.get(message.path) || Promise.resolve();
+    const queued = previous.catch(() => undefined).then(() =>
+      writeAutosaveFile(message.path, message.payload)
+    );
+    autosaveWriteQueues.set(message.path, queued);
+    queued.then(() => {
+      if (autosaveWriteQueues.get(message.path) === queued) {
+        autosaveWriteQueues.delete(message.path);
+      }
+      event.source?.postMessage({
+        type: "openiti-autosave-saved",
+        path: message.path,
+        saved_at_ms: message.payload?.saved_at_ms,
+      }, "*");
+    }).catch(error => {
+      if (autosaveWriteQueues.get(message.path) === queued) {
+        autosaveWriteQueues.delete(message.path);
+      }
+      event.source?.postMessage({
+        type: "openiti-autosave-error",
+        path: message.path,
+        error: String(error?.message || error),
+      }, "*");
+    });
+  } else if (message?.type === "openiti-review-output-write") {
+    if (!autosaveRootHandle) return;
+    if (!validReviewOutputPath(message.path) || typeof message.content !== "string") {
+      event.source?.postMessage({
+        type: "openiti-review-output-error",
+        path: message.path,
+        error: "Invalid automatic review output.",
+      }, "*");
+      return;
+    }
+    const previous = autosaveWriteQueues.get(message.path) || Promise.resolve();
+    const queued = previous.catch(() => undefined).then(() =>
+      writeReviewOutputFile(message.path, message.content)
+    );
+    autosaveWriteQueues.set(message.path, queued);
+    queued.then(() => {
+      if (autosaveWriteQueues.get(message.path) === queued) {
+        autosaveWriteQueues.delete(message.path);
+      }
+      event.source?.postMessage({
+        type: "openiti-review-output-saved",
+        path: message.path,
+      }, "*");
+    }).catch(error => {
+      if (autosaveWriteQueues.get(message.path) === queued) {
+        autosaveWriteQueues.delete(message.path);
+      }
+      event.source?.postMessage({
+        type: "openiti-review-output-error",
+        path: message.path,
+        error: String(error?.message || error),
+      }, "*");
+    });
+  } else if (message?.type === "openiti-review-output-delete") {
+    if (!autosaveRootHandle || !validReviewOutputPath(message.path)) return;
+    const previous = autosaveWriteQueues.get(message.path) || Promise.resolve();
+    const queued = previous.catch(() => undefined).then(() =>
+      deleteReviewOutputFile(message.path)
+    );
+    autosaveWriteQueues.set(message.path, queued);
+    queued.catch(error => {
+      event.source?.postMessage({
+        type: "openiti-review-output-error",
+        path: message.path,
+        error: String(error?.message || error),
+      }, "*");
+    }).finally(() => {
+      if (autosaveWriteQueues.get(message.path) === queued) {
+        autosaveWriteQueues.delete(message.path);
+      }
+    });
+  } else if (message?.type === "openiti-export-ocr-dataset-markdown") {
+    exportCompleteOcrMarkdownDataset();
+  } else if (message?.type === "openiti-export-ocr-dataset-json") {
+    exportCompleteOcrJsonDataset();
+  } else if (message?.type === "openiti-ocr-status") {
+    const activeLink = document.querySelector(".review-link.active");
+    const href = sourceFrame === reviewFrame
+      ? activeLink?.getAttribute("href") || reviewFrame?.getAttribute("src") || ""
+      : sourceFrame.getAttribute("src") || "";
+    setOcrLinkStatus(href, message.unresolved, Number(message.pending_agent || 0));
+  }
+});
+
+reviewLinks.forEach(link => {
+  link.addEventListener("click", () => setActiveReviewLink(link.getAttribute("href")));
+});
+
+if (reviewFrame) {
+  setActiveReviewLink(reviewFrame.getAttribute("src"));
+}
+
+document.getElementById("shellFontSmallerBtn").addEventListener("click", () => {
+  adjustFontScale(-0.1);
+});
+document.getElementById("shellFontLargerBtn").addEventListener("click", () => {
+  adjustFontScale(0.1);
+});
+connectDatasetBtn.addEventListener("click", connectDatasetAutosave);
+sidebarToggleBtn.addEventListener("pointerdown", event => event.stopPropagation());
+sidebarToggleBtn.addEventListener("click", () => {
+  setSidebarCollapsed(!document.body.classList.contains("sidebar-collapsed"));
+});
+
+handle.addEventListener("pointerdown", event => {
+  if (event.target === sidebarToggleBtn || document.body.classList.contains("sidebar-collapsed")) return;
+  event.preventDefault();
+  handle.classList.add("active");
+  handle.setPointerCapture(event.pointerId);
+});
+
+handle.addEventListener("pointermove", event => {
+  if (!handle.hasPointerCapture(event.pointerId)) return;
+  setSidebarWidth(event.clientX);
+});
+
+function stopResize(event) {
+  if (handle.hasPointerCapture(event.pointerId)) {
+    handle.releasePointerCapture(event.pointerId);
+  }
+  handle.classList.remove("active");
+}
+
+handle.addEventListener("pointerup", stopResize);
+handle.addEventListener("pointercancel", stopResize);
+handle.addEventListener("keydown", event => {
+  const current = Number.parseFloat(
+    getComputedStyle(layout).getPropertyValue("--sidebar-width")
+  );
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    setSidebarWidth(current - 24);
+  } else if (event.key === "ArrowRight") {
+    event.preventDefault();
+    setSidebarWidth(current + 24);
+  }
+});
+restoreDatasetAutosaveConnection();
+</script>
+</body>
+</html>

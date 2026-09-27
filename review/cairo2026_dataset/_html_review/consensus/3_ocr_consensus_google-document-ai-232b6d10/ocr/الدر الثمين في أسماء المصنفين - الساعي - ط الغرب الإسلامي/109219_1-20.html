@@ -1,0 +1,318 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Agent-assisted OCR review</title>
+<style>body{margin:0;font:14px system-ui}iframe{display:block;width:100%;height:100vh;border:0}</style></head>
+<body><button id="connectDatasetBtn" hidden>Connect Dataset</button><iframe id="viewer" title="Agent-assisted transcription"></iframe>
+<script src="109219_1-20.agent.js"></script>
+<script>
+const DATA = {"dataset_name":"cairo2026_dataset","viewer_url":"../../../../ocr_google-document-ai/%D8%A7%D9%84%D8%AF%D8%B1%20%D8%A7%D9%84%D8%AB%D9%85%D9%8A%D9%86%20%D9%81%D9%8A%20%D8%A7%D9%94%D8%B3%D9%85%D8%A7%D8%A1%20%D8%A7%D9%84%D9%85%D8%B5%D9%86%D9%81%D9%8A%D9%86%20-%20%D8%A7%D9%84%D8%B3%D8%A7%D8%B9%D9%8A%20-%20%D8%B7%20%D8%A7%D9%84%D8%BA%D8%B1%D8%A8%20%D8%A7%D9%84%D8%A7%D9%95%D8%B3%D9%84%D8%A7%D9%85%D9%8A/109219_1-20.html#agent-review=3_ocr_consensus_google-document-ai-232b6d10&document=%D8%A7%D9%84%D8%AF%D8%B1%20%D8%A7%D9%84%D8%AB%D9%85%D9%8A%D9%86%20%D9%81%D9%8A%20%D8%A7%D9%94%D8%B3%D9%85%D8%A7%D8%A1%20%D8%A7%D9%84%D9%85%D8%B5%D9%86%D9%81%D9%8A%D9%86%20-%20%D8%A7%D9%84%D8%B3%D8%A7%D8%B9%D9%8A%20-%20%D8%B7%20%D8%A7%D9%84%D8%BA%D8%B1%D8%A8%20%D8%A7%D9%84%D8%A7%D9%95%D8%B3%D9%84%D8%A7%D9%85%D9%8A%2F109219_1-20.json","document":"الدر الثمين في أسماء المصنفين - الساعي - ط الغرب الإسلامي/109219_1-20.json"};
+const frame = document.getElementById('viewer');
+let ready = false;
+function setAutosaveStatus(text) {if(ready) send({type:'openiti-agent-autosave-status',text});}
+
+const connectDatasetBtn = document.getElementById("connectDatasetBtn");
+const standaloneAutosaveHandleKey = `dataset-root:${DATA.dataset_name || "dataset"}`;
+let standaloneAutosaveRootHandle = null;
+let standaloneAutosaveTimer = null;
+let standaloneAutosaveWriteQueue = Promise.resolve();
+
+function validStandaloneAutosavePath(path) {
+  const parts = String(path || "").split("/");
+  const agentPath = parts[0] === "_agent_review" && /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(parts[1] || "") && parts[2] === "ocr" && parts.at(-1).endsWith(".json");
+  return parts.length >= 3 && (parts[0] === "review_state" || agentPath) &&
+    parts.every(part => part && part !== "." && part !== "..");
+}
+
+function validStandaloneReviewOutputPath(path) {
+  const parts = String(path || "").split("/");
+  const filename = parts.at(-1) || "";
+  return parts.length >= 3 && parts[0] === "review_output" &&
+    (filename.endsWith(".json") || filename.endsWith(".md")) &&
+    parts.every(part => part && part !== "." && part !== "..");
+}
+
+function openStandaloneAutosaveDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = window.indexedDB.open("cairo2026-workshop-review", 1);
+    request.addEventListener("upgradeneeded", () => {
+      if (!request.result.objectStoreNames.contains("directory-handles")) {
+        request.result.createObjectStore("directory-handles");
+      }
+    });
+    request.addEventListener("success", () => resolve(request.result));
+    request.addEventListener("error", () => reject(request.error));
+  });
+}
+
+async function storedStandaloneAutosaveHandle() {
+  const database = await openStandaloneAutosaveDatabase();
+  try {
+    return await new Promise((resolve, reject) => {
+      const request = database
+        .transaction("directory-handles", "readonly")
+        .objectStore("directory-handles")
+        .get(standaloneAutosaveHandleKey);
+      request.addEventListener("success", () => resolve(request.result || null));
+      request.addEventListener("error", () => reject(request.error));
+    });
+  } finally {
+    database.close();
+  }
+}
+
+async function rememberStandaloneAutosaveHandle(handle) {
+  const database = await openStandaloneAutosaveDatabase();
+  try {
+    await new Promise((resolve, reject) => {
+      const request = database
+        .transaction("directory-handles", "readwrite")
+        .objectStore("directory-handles")
+        .put(handle, standaloneAutosaveHandleKey);
+      request.addEventListener("success", () => resolve());
+      request.addEventListener("error", () => reject(request.error));
+    });
+  } finally {
+    database.close();
+  }
+}
+
+async function standaloneAutosaveFileHandle(path, create) {
+  if (!standaloneAutosaveRootHandle || !validStandaloneAutosavePath(path)) {
+    throw new Error("Invalid or unavailable review autosave path.");
+  }
+  const parts = path.split("/");
+  const filename = parts.pop();
+  let directory = standaloneAutosaveRootHandle;
+  for (const part of parts) {
+    directory = await directory.getDirectoryHandle(part, {create});
+  }
+  return directory.getFileHandle(filename, {create});
+}
+
+async function standaloneReviewOutputFileHandle(path, create) {
+  if (!standaloneAutosaveRootHandle || !validStandaloneReviewOutputPath(path)) {
+    throw new Error("Invalid or unavailable automatic review-output path.");
+  }
+  const parts = path.split("/");
+  const filename = parts.pop();
+  let directory = standaloneAutosaveRootHandle;
+  for (const part of parts) {
+    directory = await directory.getDirectoryHandle(part, {create});
+  }
+  return directory.getFileHandle(filename, {create});
+}
+
+async function readStandaloneAutosaveFile(path) {
+  try {
+    const handle = await standaloneAutosaveFileHandle(path, false);
+    const file = await handle.getFile();
+    return JSON.parse(await file.text());
+  } catch (error) {
+    if (error?.name === "NotFoundError") return null;
+    throw error;
+  }
+}
+
+async function writeStandaloneAutosaveFile(path, payload) {
+  const handle = await standaloneAutosaveFileHandle(path, true);
+  const writable = await handle.createWritable();
+  try {
+    await writable.write(JSON.stringify(payload) + "\n");
+  } finally {
+    await writable.close();
+  }
+}
+
+async function writeStandaloneReviewOutput(path, content) {
+  const handle = await standaloneReviewOutputFileHandle(path, true);
+  const writable = await handle.createWritable();
+  try {
+    await writable.write(String(content));
+  } finally {
+    await writable.close();
+  }
+}
+
+async function deleteStandaloneReviewOutput(path) {
+  if (!standaloneAutosaveRootHandle || !validStandaloneReviewOutputPath(path)) {
+    throw new Error("Invalid or unavailable automatic review-output path.");
+  }
+  const parts = path.split("/");
+  const filename = parts.pop();
+  let directory = standaloneAutosaveRootHandle;
+  try {
+    for (const part of parts) {
+      directory = await directory.getDirectoryHandle(part, {create: false});
+    }
+    await directory.removeEntry(filename);
+  } catch (error) {
+    if (error?.name !== "NotFoundError") throw error;
+  }
+}
+
+function queueReviewOutputWrite(path, content) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "openiti-review-output-write",
+      path,
+      content,
+    }, "*");
+    return true;
+  }
+  if (!standaloneAutosaveRootHandle || !validStandaloneReviewOutputPath(path)) return false;
+  standaloneAutosaveWriteQueue = standaloneAutosaveWriteQueue
+    .catch(() => undefined)
+    .then(() => writeStandaloneReviewOutput(path, content));
+  standaloneAutosaveWriteQueue.then(() => {
+    setAutosaveStatus(`Autosave: saved to ${DATA.dataset_name || "dataset"}`, "connected");
+  }).catch(error => {
+    console.warn("Standalone automatic review-output write failed", error);
+    setAutosaveStatus("Autosave: browser only (review-output error)", "error");
+  });
+  return true;
+}
+
+function queueReviewOutputDelete(path) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "openiti-review-output-delete",
+      path,
+    }, "*");
+    return true;
+  }
+  if (!standaloneAutosaveRootHandle || !validStandaloneReviewOutputPath(path)) return false;
+  standaloneAutosaveWriteQueue = standaloneAutosaveWriteQueue
+    .catch(() => undefined)
+    .then(() => deleteStandaloneReviewOutput(path));
+  standaloneAutosaveWriteQueue.catch(error => {
+    console.warn("Standalone automatic review-output deletion failed", error);
+    setAutosaveStatus("Autosave: browser only (review-output error)", "error");
+  });
+  return true;
+}
+
+function queueStandaloneFileAutosave(path, payload) {
+  if (!standaloneAutosaveRootHandle || !validStandaloneAutosavePath(path)) return false;
+  window.clearTimeout(standaloneAutosaveTimer);
+  setAutosaveStatus("Autosave: saving…", "saving");
+  standaloneAutosaveTimer = window.setTimeout(() => {
+    standaloneAutosaveWriteQueue = standaloneAutosaveWriteQueue
+      .catch(() => undefined)
+      .then(() => writeStandaloneAutosaveFile(path, payload));
+    standaloneAutosaveWriteQueue.then(() => {
+      setAutosaveStatus(`Autosave: saved to ${DATA.dataset_name || "dataset"}`, "connected");
+    }).catch(error => {
+      console.warn("Standalone dataset file autosave failed", error);
+      setAutosaveStatus("Autosave: browser only (file error)", "error");
+    });
+  }, 450);
+  return true;
+}
+
+async function resumeStandaloneAutosave() {
+  const payload = await readStandaloneAutosaveFile(DATA.review_state_path);
+  if (payload) restoreStandaloneAutosaveDraft(payload);
+  if (typeof saveDraft === "function") saveDraft();
+}
+
+async function activateStandaloneAutosaveHandle(handle, requestPermission) {
+  if (!handle) return false;
+  let permission = await handle.queryPermission({mode: "readwrite"});
+  if (permission !== "granted" && requestPermission) {
+    permission = await handle.requestPermission({mode: "readwrite"});
+  }
+  if (permission !== "granted") return false;
+  standaloneAutosaveRootHandle = handle;
+  connectDatasetBtn.textContent = "Change Dataset Folder";
+  setAutosaveStatus(`Autosave: ${handle.name} connected`, "connected");
+  await resumeStandaloneAutosave();
+  return true;
+}
+
+async function connectStandaloneDataset() {
+  if (typeof window.showDirectoryPicker !== "function") {
+    setAutosaveStatus("Autosave: browser only (folder access unavailable)", "error");
+    return;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({mode: "readwrite"});
+    if (DATA.dataset_name && handle.name !== DATA.dataset_name && !window.confirm(
+      `You selected “${handle.name}”, but this review belongs to “${DATA.dataset_name}”. ` +
+      "Use the selected folder anyway?"
+    )) return;
+    if (!await activateStandaloneAutosaveHandle(handle, true)) {
+      setAutosaveStatus("Autosave: browser only (write access not granted)", "error");
+      return;
+    }
+    try {
+      await rememberStandaloneAutosaveHandle(handle);
+    } catch (error) {
+      console.warn("Could not remember the standalone dataset folder", error);
+    }
+  } catch (error) {
+    if (error?.name === "AbortError") return;
+    console.warn("Could not connect standalone dataset autosave", error);
+    setAutosaveStatus("Autosave: browser only (connection failed)", "error");
+  }
+}
+
+async function initializeStandaloneAutosave() {
+  if (window.parent && window.parent !== window) {
+    connectDatasetBtn.hidden = true;
+    return;
+  }
+  connectDatasetBtn.hidden = false;
+  connectDatasetBtn.addEventListener("click", connectStandaloneDataset);
+  if (typeof window.showDirectoryPicker !== "function") return;
+  try {
+    const handle = await storedStandaloneAutosaveHandle();
+    if (!handle || await activateStandaloneAutosaveHandle(handle, false)) return;
+    setAutosaveStatus("Autosave: browser; reconnect dataset folder");
+  } catch (error) {
+    console.warn("Could not restore standalone dataset autosave", error);
+  }
+}
+
+const cfg = DATA.config || window.openitiAgentConfigs[DATA.document];
+const namespace = cfg.review_kind === 'consensus' ? 'consensus' : 'agent';
+if (namespace === 'consensus') {document.title='Consensus-assisted OCR review';frame.title='Consensus-assisted transcription';}
+const draftPath = cfg.mode === 'agent' ? cfg.state_path : cfg.verification_path;
+const outputPaths = new Set([`review_output/${namespace}/${cfg.run_id}/ocr/json/${cfg.document}`, `review_output/${namespace}/${cfg.run_id}/ocr/md/${cfg.document.slice(0,-5)}.md`]);
+function send(message) {frame.contentWindow.postMessage(message,'*');}
+resumeStandaloneAutosave = async function() {
+  if (ready) send({type:'openiti-autosave-connection',connected:!!standaloneAutosaveRootHandle});
+};
+let pendingWrites = 0;
+window.addEventListener('beforeunload', event => {if (pendingWrites) {event.preventDefault();event.returnValue='';}});
+window.addEventListener('message', event => {
+  if (event.source !== frame.contentWindow) return;
+  const m = event.data;
+  if (m?.type === 'openiti-agent-connect-dataset') {connectStandaloneDataset();return;}
+  if (m?.type === 'openiti-agent-review-ready') {send({type:'openiti-agent-review-config',config:cfg});return;}
+  if (m?.type === 'openiti-autosave-ready' && m.path === draftPath) {ready=true;resumeStandaloneAutosave();return;}
+  const draft = m?.path === draftPath && ['openiti-autosave-read','openiti-autosave-write'].includes(m?.type);
+  const output = cfg.mode === 'human' && outputPaths.has(m?.path) && ['openiti-review-output-write','openiti-review-output-delete'].includes(m?.type);
+  if ((!draft && !output) || !standaloneAutosaveRootHandle) return;
+  pendingWrites++;
+  standaloneAutosaveWriteQueue = standaloneAutosaveWriteQueue.catch(()=>undefined).then(async()=>{
+    try {
+      if (m.type === 'openiti-autosave-read') {
+        send({type:'openiti-autosave-resume',path:draftPath,payload:await readStandaloneAutosaveFile(draftPath)});
+      } else if (draft) {
+        if (m.payload?.run_id !== cfg.run_id || m.payload?.document !== cfg.document) throw new Error('Draft identity mismatch');
+        await writeStandaloneAutosaveFile(draftPath,m.payload);
+        send({type:'openiti-autosave-saved',path:draftPath});
+        setAutosaveStatus(`Autosave: saved to ${DATA.dataset_name}`);
+      } else {
+        if (m.type.endsWith('-delete')) await deleteStandaloneReviewOutput(m.path);
+        else await writeStandaloneReviewOutput(m.path,m.content);
+        send({type:'openiti-review-output-saved',path:m.path});
+      }
+    } catch(error) {
+      setAutosaveStatus('Autosave failed: '+error.message);
+      send({type:draft?'openiti-autosave-error':'openiti-review-output-error',path:m.path,error:error.message});
+    } finally {pendingWrites--;}
+  });
+});
+frame.src = DATA.viewer_url;
+initializeStandaloneAutosave();
+document.getElementById('connectDatasetBtn').hidden = true;
+</script></body></html>

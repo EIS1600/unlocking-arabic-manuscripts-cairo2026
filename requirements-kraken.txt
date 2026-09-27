@@ -1,0 +1,2 @@
+# Install separately with Python 3.10–3.13.
+-r ../../requirements-kraken.txt

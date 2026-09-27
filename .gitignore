@@ -1,0 +1,42 @@
+# Local Python environments and caches
+env/
+env-kraken/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.cache/
+
+# Private configuration and credentials (keep shareable templates)
+.env
+.env.*
+!.env.example
+!.env.template
+credentials.json
+service-account*.json
+application_default_credentials.json
+*.pem
+*.key
+
+# Downloaded model weights; README documents where to obtain them
+/recognisers/kraken_models/
+*.mlmodel
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+
+# Local OCR runs and participants' saved corrections
+/output_*
+/output/
+review_state/
+review_output/
+
+# Operating-system files
+.DS_Store
+._*
+Thumbs.db
+
+# Keep input_examples/, prompts/ and the complete review/ applications tracked.
