@@ -9,7 +9,7 @@ themselves and compare their results.
 
 ## Exercise 1: review transcription and layout
 
-**Start with [index.html](index.html)**, the consensus review used in the main
+**Start with the [online review application](https://eis1600.github.io/unlocking-arabic-manuscripts-cairo2026/)**, the consensus review used in the main
 exercise, with **two printed books and no metadata**. The website loads each
 book only when selected. Use **Save HTML** to keep a complete offline copy.
 No installation, dataset-folder connection or API key is needed.
